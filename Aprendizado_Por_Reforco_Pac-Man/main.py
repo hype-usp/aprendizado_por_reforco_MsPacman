@@ -1,42 +1,46 @@
-from environment import create_environment
+from environment import create_environment, reset_environment, step_environment
 from preprocess import preprocess_observation
-import cv2
+from agent import DQNAgent
 import numpy as np
+import cv2
 
 def main():
     # Cria o ambiente
     env = create_environment()
     
-    # Reinicializa o ambiente e obtém a primeira observação
-    observation, info = env.reset()
+    # Obtém informações sobre o estado e ações
+    state_shape = env.observation_space.shape  # Dimensão do estado do ambiente
+    action_size = env.action_space.n  # Número de ações possíveis
+
+    # Cria o agente DQN
+    agent = DQNAgent(state_shape, action_size)
     
-    # Inicializa variáveis para o loop do jogo
+    # Loop de Jogo para inicializar
     done = False
     total_reward = 0
 
-    # Loop do jogo até o episódio terminar
+    observation, info = reset_environment(env)
+    
     while not done:
         # Preprocessa a observação atual
         processed_observation = preprocess_observation(observation)
+
+        # Escolhe uma ação usando a política ε-greedy do agente
+        action = agent.choose_action(processed_observation)
+
+        # Executa a ação no ambiente
+        observation, reward, terminated, truncated, info = step_environment(env, action)
+
+        # Atualiza a pontuação total e verifica se o jogo terminou
+        total_reward += reward
+        done = terminated or truncated
 
         # Exibe a observação original e preprocessada
         cv2.imshow("Original Observation", observation)
         processed_for_display = (processed_observation * 255).astype('uint8')
         cv2.imshow("Processed Observation", processed_for_display)
-
-        # Aguarda um breve momento para permitir a visualização
         cv2.waitKey(1)
 
-        # Escolhe uma ação aleatória
-        action = env.action_space.sample()
-
-        # Executa a ação no ambiente
-        observation, reward, terminated, truncated, info = env.step(action)
-
-        # Atualiza a pontuação total e verifica se o jogo terminou
-        total_reward += reward
-        done = terminated or truncated
-    
     # Exibe a pontuação total do jogo
     print(f"Pontuação do episódio: {total_reward}")
     
